@@ -1,7 +1,9 @@
 package net.javaguides.springboot;
 
 import net.javaguides.springboot.dto.EmployeeDto;
+import net.javaguides.springboot.repository.EmployeeRepository;
 import net.javaguides.springboot.service.EmployeeService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,8 +22,17 @@ public class EmployeeControllerIntegrationTest {
     @Autowired
     private WebTestClient webTestClient;
 
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
+    @BeforeEach
+    public void before(){
+        System.out.println("Before Each Test");
+        employeeRepository.deleteAll().subscribe();
+    }
+
     @Test
-    public void testSaveEmployee() {
+    public void testSaveEmployee(){
 
         EmployeeDto employeeDto = new EmployeeDto();
         employeeDto.setFirstName("John");
@@ -42,23 +53,94 @@ public class EmployeeControllerIntegrationTest {
     }
 
     @Test
-    public void testGetSingleEmployee() {
+    public void testGetSingleEmployee(){
+
         EmployeeDto employeeDto = new EmployeeDto();
-        employeeDto.setFirstName("vinicius");
-        employeeDto.setLastName("Meneses");
-        employeeDto.setEmail("viniciusmmeneses15@gmail.com");
+        employeeDto.setFirstName("Meena");
+        employeeDto.setLastName("Fadatare");
+        employeeDto.setEmail("meena@gmail.com");
 
         EmployeeDto savedEmployee = employeeService.saveEmployee(employeeDto).block();
 
-        webTestClient.get().uri("/api/employees/{id}", Collections.singletonMap("id", savedEmployee.getId()))
+        webTestClient.get().uri("/api/employees/{id}", Collections.singletonMap("id",savedEmployee.getId()))
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .consumeWith(System.out::println)
                 .jsonPath("$.id").isEqualTo(savedEmployee.getId())
-                .jsonPath("$.firstName").isEqualTo(savedEmployee.getFirstName())
-                .jsonPath("$.lastName").isEqualTo(savedEmployee.getLastName())
-                .jsonPath("$.email").isEqualTo(savedEmployee.getEmail());
+                .jsonPath("$.firstName").isEqualTo(employeeDto.getFirstName())
+                .jsonPath("$.lastName").isEqualTo(employeeDto.getLastName())
+                .jsonPath("$.email").isEqualTo(employeeDto.getEmail());
     }
 
+    @Test
+    public void testGetAllEmployees(){
+
+        EmployeeDto employeeDto = new EmployeeDto();
+        employeeDto.setFirstName("John");
+        employeeDto.setLastName("Cena");
+        employeeDto.setEmail("john@gmail.com");
+
+        employeeService.saveEmployee(employeeDto).block();
+
+        EmployeeDto employeeDto1 = new EmployeeDto();
+        employeeDto1.setFirstName("Meena");
+        employeeDto1.setLastName("Fadatare");
+        employeeDto1.setEmail("meena@gmail.com");
+
+        employeeService.saveEmployee(employeeDto1).block();
+
+        webTestClient.get().uri("/api/employees")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(EmployeeDto.class)
+                .consumeWith(System.out::println);
+    }
+
+    @Test
+    public void testUpdateEmployee(){
+
+        EmployeeDto employeeDto = new EmployeeDto();
+        employeeDto.setFirstName("Ramesh");
+        employeeDto.setLastName("Fadatare");
+        employeeDto.setEmail("ramesh@gmail.com");
+
+        EmployeeDto savedEmployee = employeeService.saveEmployee(employeeDto).block();
+
+        EmployeeDto updatedEmployee = new EmployeeDto();
+        updatedEmployee.setFirstName("Ram");
+        updatedEmployee.setLastName("Jadhav");
+        updatedEmployee.setEmail("ram@gmail.com");
+
+        webTestClient.put().uri("/api/employees/{id}", Collections.singletonMap("id", savedEmployee.getId()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(Mono.just(updatedEmployee), EmployeeDto.class)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .consumeWith(System.out::println)
+                .jsonPath("$.firstName").isEqualTo(updatedEmployee.getFirstName())
+                .jsonPath("$.lastName").isEqualTo(updatedEmployee.getLastName())
+                .jsonPath("$.email").isEqualTo(updatedEmployee.getEmail());
+    }
+
+    @Test
+    public void testDeleteEmployee(){
+
+        EmployeeDto employeeDto = new EmployeeDto();
+        employeeDto.setFirstName("Ramesh");
+        employeeDto.setLastName("Fadatare");
+        employeeDto.setEmail("ramesh@gmail.com");
+
+        EmployeeDto savedEmployee = employeeService.saveEmployee(employeeDto).block();
+
+        webTestClient.delete().uri("/api/employees/{id}", Collections.singletonMap("id", savedEmployee.getId()))
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectBody()
+                .consumeWith(System.out::println);
+
+    }
 }
